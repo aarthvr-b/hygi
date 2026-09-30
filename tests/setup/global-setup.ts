@@ -4,6 +4,7 @@ type SupabaseStatus = {
   API_URL: string;
   ANON_KEY: string;
   SERVICE_ROLE_KEY: string;
+  DB_URL: string;
 };
 
 export default async function globalSetup() {
@@ -18,6 +19,9 @@ export default async function globalSetup() {
   process.env.NEXT_PUBLIC_SUPABASE_URL = status.API_URL;
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = status.ANON_KEY;
   process.env.SUPABASE_SERVICE_ROLE_KEY = status.SERVICE_ROLE_KEY;
+  process.env.DATABASE_URL = status.DB_URL;
+
+  execSync("npm run db:migrate", { stdio: "inherit" });
 
   return async () => {
     execSync("npx supabase stop", { stdio: "inherit" });

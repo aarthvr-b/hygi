@@ -1,0 +1,343 @@
+{
+  "id": "c7e8727d-e6ac-4eee-a88c-c4fef0092525",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.services": {
+      "name": "services",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "hygienist_id": {
+          "name": "hygienist_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "auth.uid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "services_active_name_unique": {
+          "name": "services_active_name_unique",
+          "columns": [
+            {
+              "expression": "hygienist_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "lower(btrim(\"name\"))",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"services\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "services_hygienist_id_users_id_fk": {
+          "name": "services_hygienist_id_users_id_fk",
+          "tableFrom": "services",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": [
+            "hygienist_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "services_id_hygienist_id_unique": {
+          "name": "services_id_hygienist_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "hygienist_id"
+          ]
+        }
+      },
+      "policies": {
+        "hygienist owns services": {
+          "name": "hygienist owns services",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "authenticated"
+          ],
+          "using": "hygienist_id = (select auth.uid())",
+          "withCheck": "hygienist_id = (select auth.uid())"
+        }
+      },
+      "checkConstraints": {
+        "services_name_not_blank": {
+          "name": "services_name_not_blank",
+          "value": "btrim(\"services\".\"name\") <> ''"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.studio_service_prices": {
+      "name": "studio_service_prices",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "hygienist_id": {
+          "name": "hygienist_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "auth.uid()"
+        },
+        "studio_id": {
+          "name": "studio_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "service_id": {
+          "name": "service_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "price_cents": {
+          "name": "price_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valid_from": {
+          "name": "valid_from",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "studio_service_prices_hygienist_id_users_id_fk": {
+          "name": "studio_service_prices_hygienist_id_users_id_fk",
+          "tableFrom": "studio_service_prices",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": [
+            "hygienist_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "studio_service_prices_studio_id_hygienist_id_studios_id_hygienist_id_fk": {
+          "name": "studio_service_prices_studio_id_hygienist_id_studios_id_hygienist_id_fk",
+          "tableFrom": "studio_service_prices",
+          "tableTo": "studios",
+          "columnsFrom": [
+            "studio_id",
+            "hygienist_id"
+          ],
+          "columnsTo": [
+            "id",
+            "hygienist_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "studio_service_prices_service_id_hygienist_id_services_id_hygienist_id_fk": {
+          "name": "studio_service_prices_service_id_hygienist_id_services_id_hygienist_id_fk",
+          "tableFrom": "studio_service_prices",
+          "tableTo": "services",
+          "columnsFrom": [
+            "service_id",
+            "hygienist_id"
+          ],
+          "columnsTo": [
+            "id",
+            "hygienist_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "studio_service_prices_studio_id_service_id_valid_from_unique": {
+          "name": "studio_service_prices_studio_id_service_id_valid_from_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "studio_id",
+            "service_id",
+            "valid_from"
+          ]
+        }
+      },
+      "policies": {
+        "hygienist owns studio_service_prices": {
+          "name": "hygienist owns studio_service_prices",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "authenticated"
+          ],
+          "using": "hygienist_id = (select auth.uid())",
+          "withCheck": "hygienist_id = (select auth.uid())"
+        }
+      },
+      "checkConstraints": {
+        "studio_service_prices_price_not_negative": {
+          "name": "studio_service_prices_price_not_negative",
+          "value": "\"studio_service_prices\".\"price_cents\" >= 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.studios": {
+      "name": "studios",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "hygienist_id": {
+          "name": "hygienist_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "auth.uid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "studios_hygienist_id_users_id_fk": {
+          "name": "studios_hygienist_id_users_id_fk",
+          "tableFrom": "studios",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": [
+            "hygienist_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "studios_id_hygienist_id_unique": {
+          "name": "studios_id_hygienist_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "hygienist_id"
+          ]
+        }
+      },
+      "policies": {
+        "hygienist owns studios": {
+          "name": "hygienist owns studios",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "authenticated"
+          ],
+          "using": "hygienist_id = (select auth.uid())",
+          "withCheck": "hygienist_id = (select auth.uid())"
+        }
+      },
+      "checkConstraints": {
+        "studios_name_not_blank": {
+          "name": "studios_name_not_blank",
+          "value": "btrim(\"studios\".\"name\") <> ''"
+        }
+      },
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

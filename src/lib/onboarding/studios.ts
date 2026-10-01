@@ -29,7 +29,7 @@ export async function listStudios(client: SupabaseClient): Promise<Studio[]> {
   return rows.map(toStudio);
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function getStudio(client: SupabaseClient, id: string): Promise<Studio | null> {
   // Ids come from the URL; a malformed one is simply not one of her Studios.

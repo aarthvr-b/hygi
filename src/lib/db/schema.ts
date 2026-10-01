@@ -3,9 +3,12 @@ import {
   check,
   date,
   foreignKey,
+  index,
   integer,
+  pgEnum,
   pgPolicy,
   pgTable,
+  smallint,
   text,
   timestamp,
   unique,
@@ -95,5 +98,71 @@ export const studioServicePrices = pgTable(
     }).onDelete("cascade"),
     check("studio_service_prices_price_not_negative", sql`${t.priceCents} >= 0`),
     ownedByHygienist("studio_service_prices"),
+  ],
+).enableRLS();
+
+export const timeOfDay = pgEnum("time_of_day", ["am", "pm", "full_day"]);
+
+// The anchor date is the Template's first occurrence: it fixes both the
+// weekday and, for intervals over a week, which weeks the Template falls on.
+// generated_through is how far the generation job has materialized Shifts
+// (ADR-0001). It only moves forward, so a Shift she deleted or moved is never
+// generated again.
+export const shiftTemplates = pgTable(
+  "shift_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    hygienistId: hygienistId(),
+    studioId: uuid("studio_id").notNull(),
+    // ISO weekday: 1 = Monday ... 7 = Sunday.
+    weekday: smallint("weekday").notNull(),
+    timeOfDay: timeOfDay("time_of_day").notNull(),
+    intervalWeeks: integer("interval_weeks").notNull(),
+    anchorDate: date("anchor_date").notNull(),
+    generatedThrough: date("generated_through"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.id, t.hygienistId),
+    foreignKey({
+      columns: [t.studioId, t.hygienistId],
+      foreignColumns: [studios.id, studios.hygienistId],
+    }).onDelete("cascade"),
+    check("shift_templates_interval_at_least_one_week", sql`${t.intervalWeeks} >= 1`),
+    check(
+      "shift_templates_anchor_falls_on_weekday",
+      sql`extract(isodow from ${t.anchorDate}) = ${t.weekday}`,
+    ),
+    ownedByHygienist("shift_templates"),
+  ],
+).enableRLS();
+
+// A Shift is independent of its Template once generated (ADR-0001):
+// template_id is provenance only, and is null for a one-off Shift.
+export const shifts = pgTable(
+  "shifts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    hygienistId: hygienistId(),
+    studioId: uuid("studio_id").notNull(),
+    templateId: uuid("template_id"),
+    date: date("date").notNull(),
+    timeOfDay: timeOfDay("time_of_day").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.id, t.hygienistId),
+    foreignKey({
+      columns: [t.studioId, t.hygienistId],
+      foreignColumns: [studios.id, studios.hygienistId],
+    }).onDelete("cascade"),
+    // The migration narrows this to SET NULL (template_id), which Drizzle
+    // can't express, so losing a Template never nulls the Shift's hygienist_id.
+    foreignKey({
+      columns: [t.templateId, t.hygienistId],
+      foreignColumns: [shiftTemplates.id, shiftTemplates.hygienistId],
+    }).onDelete("set null"),
+    index("shifts_hygienist_date_idx").on(t.hygienistId, t.date),
+    ownedByHygienist("shifts"),
   ],
 ).enableRLS();

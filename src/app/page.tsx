@@ -19,7 +19,10 @@ export default async function Home() {
         <p>Signed in as {data.user?.email}</p>
         <ul className="list-disc pl-6">
           <li>
-            <Link href="/studios">Studios and prices</Link>
+            <Link href="/calendar">Calendar</Link>
+          </li>
+          <li>
+            <Link href="/studios">Studios, prices and Shift Templates</Link>
           </li>
           <li>
             <Link href="/services">Services</Link>

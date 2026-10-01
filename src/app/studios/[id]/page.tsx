@@ -1,13 +1,16 @@
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/app/action-form";
 import { AppNav } from "@/app/app-nav";
-import { todayInRome } from "@/lib/dates";
+import { TimeOfDaySelect } from "@/app/calendar/shift-fields";
+import { TIME_OF_DAY_LABELS, WEEKDAY_LABELS } from "@/app/schedule-labels";
+import { isoWeekday, todayInRome } from "@/lib/dates";
 import { formatCents } from "@/lib/onboarding/money";
 import { isInForce, listPrices } from "@/lib/onboarding/price-list";
 import { listServices } from "@/lib/onboarding/service-catalog";
 import { getStudio } from "@/lib/onboarding/studios";
+import { listShiftTemplates } from "@/lib/schedule/shift-templates";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { setPriceAction, updateStudioAction } from "../actions";
+import { createShiftTemplateAction, setPriceAction, updateStudioAction } from "../actions";
 import { StudioFields } from "../studio-fields";
 
 export default async function StudioPage(props: PageProps<"/studios/[id]">) {
@@ -18,7 +21,11 @@ export default async function StudioPage(props: PageProps<"/studios/[id]">) {
     notFound();
   }
 
-  const [services, prices] = await Promise.all([listServices(supabase), listPrices(supabase, id)]);
+  const [services, prices, templates] = await Promise.all([
+    listServices(supabase),
+    listPrices(supabase, id),
+    listShiftTemplates(supabase, id),
+  ]);
   const today = todayInRome();
 
   return (
@@ -29,6 +36,56 @@ export default async function StudioPage(props: PageProps<"/studios/[id]">) {
           <h1 className="text-2xl font-semibold">{studio.name}</h1>
           <ActionForm action={updateStudioAction.bind(null, studio.id)} submitLabel="Save">
             <StudioFields studio={studio} />
+          </ActionForm>
+        </section>
+
+        <section className="flex flex-col gap-4">
+          <h2 className="text-lg font-semibold">Shift Templates</h2>
+
+          {templates.length === 0 ? (
+            <p>No Shift Templates — this Studio is worked through one-off Shifts.</p>
+          ) : (
+            <ul className="list-disc pl-6">
+              {templates.map((template) => (
+                <li key={template.id}>
+                  {template.intervalWeeks === 1
+                    ? `Every ${WEEKDAY_LABELS[template.weekday - 1]}`
+                    : `Every ${template.intervalWeeks} weeks on ${WEEKDAY_LABELS[template.weekday - 1]}`}
+                  , {TIME_OF_DAY_LABELS[template.timeOfDay].toLowerCase()} — from {template.anchorDate}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <ActionForm
+            action={createShiftTemplateAction.bind(null, studio.id)}
+            submitLabel="Add Shift Template"
+          >
+            <label className="flex flex-col gap-1">
+              <span>Weekday</span>
+              <select name="weekday" required defaultValue={isoWeekday(today)}>
+                {WEEKDAY_LABELS.map((weekday, i) => (
+                  <option key={weekday} value={i + 1}>
+                    {weekday}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <TimeOfDaySelect />
+            <label className="flex flex-col gap-1">
+              <span>Repeats every (weeks)</span>
+              <input name="intervalWeeks" type="number" required min={1} step={1} defaultValue={1} />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span>Starting from</span>
+              <input name="startingFrom" type="date" required defaultValue={today} />
+            </label>
+            <p className="text-sm">
+              Shifts are added to the calendar for the next 12 weeks and kept topped up. The first one
+              falls on the first matching weekday on or after the start date. For two Studios
+              alternating on the same weekday, give each a Template repeating every 2 weeks, starting
+              a week apart.
+            </p>
           </ActionForm>
         </section>
 

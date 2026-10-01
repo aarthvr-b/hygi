@@ -7,7 +7,18 @@ type SupabaseStatus = {
   DB_URL: string;
 };
 
+function isStackRunning(): boolean {
+  try {
+    execSync("npx supabase status", { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default async function globalSetup() {
+  // `npm run dev` uses the same local stack, so leave it up if it already was.
+  const wasRunning = isStackRunning();
   execSync("npx supabase start", { stdio: "inherit" });
 
   // The CLI can print warning lines (e.g. about optional services it didn't
@@ -24,6 +35,8 @@ export default async function globalSetup() {
   execSync("npm run db:migrate", { stdio: "inherit" });
 
   return async () => {
-    execSync("npx supabase stop", { stdio: "inherit" });
+    if (!wasRunning) {
+      execSync("npx supabase stop", { stdio: "inherit" });
+    }
   };
 }

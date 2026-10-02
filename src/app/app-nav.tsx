@@ -7,6 +7,7 @@ export function AppNav() {
       <Link href="/" className="font-semibold">
         Hygi
       </Link>
+      <Link href="/calendar">Calendar</Link>
       <Link href="/studios">Studios</Link>
       <Link href="/services">Services</Link>
       <span className="flex-1" />

@@ -8,6 +8,20 @@
       "when": 1790776682602,
       "tag": "0000_onboarding_studios_services_prices",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790842847126,
+      "tag": "0001_shift_templates_and_shifts",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790842860544,
+      "tag": "0002_materialize_shifts_job",
+      "breakpoints": true
     }
   ]
 }

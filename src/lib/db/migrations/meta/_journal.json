@@ -22,6 +22,20 @@
       "when": 1790842860544,
       "tag": "0002_materialize_shifts_job",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790937062183,
+      "tag": "0003_shift_lines",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790937062976,
+      "tag": "0004_close_shift",
+      "breakpoints": true
     }
   ]
 }

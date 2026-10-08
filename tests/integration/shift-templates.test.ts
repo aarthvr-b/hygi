@@ -135,6 +135,7 @@ describe("Shift Templates", () => {
       date: "2026-10-09",
       timeOfDay: "pm",
       templateId: template.id,
+      closedAt: null,
     });
     expect(after.filter((s) => s.id !== swapped.id)).toEqual(
       before.filter((s) => s.id !== swapped.id),

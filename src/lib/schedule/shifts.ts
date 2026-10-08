@@ -18,6 +18,8 @@ export type Shift = {
   timeOfDay: TimeOfDay;
   // Provenance only: the Shift Template this Shift was generated from, if any.
   templateId: string | null;
+  // Null while the Shift is Planned; set once it has been closed.
+  closedAt: string | null;
 };
 
 export type ShiftInput = {
@@ -32,9 +34,10 @@ type ShiftRow = {
   date: string;
   time_of_day: TimeOfDay;
   template_id: string | null;
+  closed_at: string | null;
 };
 
-const columns = "id, studio_id, date, time_of_day, template_id";
+const columns = "id, studio_id, date, time_of_day, template_id, closed_at";
 
 function toShift(row: ShiftRow): Shift {
   return {
@@ -43,6 +46,7 @@ function toShift(row: ShiftRow): Shift {
     date: row.date,
     timeOfDay: row.time_of_day,
     templateId: row.template_id,
+    closedAt: row.closed_at,
   };
 }
 

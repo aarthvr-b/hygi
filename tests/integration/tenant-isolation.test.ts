@@ -12,6 +12,7 @@ describe("tenant isolation (hygienist_id + RLS)", () => {
   let priceId: string;
   let templateId: string;
   let shiftId: string;
+  let lineId: string;
 
   beforeAll(async () => {
     owner = await createAuthenticatedTestUser();
@@ -56,6 +57,14 @@ describe("tenant isolation (hygienist_id + RLS)", () => {
       .single();
     expect(shift.error).toBeNull();
     shiftId = shift.data!.id;
+
+    const line = await owner.client
+      .from("shift_lines")
+      .insert({ shift_id: shiftId, service_id: serviceId, count: 6, unit_price_cents: 3200 })
+      .select()
+      .single();
+    expect(line.error).toBeNull();
+    lineId = line.data!.id;
   });
 
   afterAll(async () => {
@@ -74,18 +83,20 @@ describe("tenant isolation (hygienist_id + RLS)", () => {
     ["studio_service_prices", () => priceId],
     ["shift_templates", () => templateId],
     ["shifts", () => shiftId],
+    ["shift_lines", () => lineId],
   ])("hides %s rows from another hygienist", async (table, id) => {
     const { data, error } = await intruder.client.from(table).select().eq("id", id());
     expect(error).toBeNull();
     expect(data).toEqual([]);
   });
 
-  it("does not let another hygienist edit Studios, Services, Prices, Shift Templates or Shifts", async () => {
+  it("does not let another hygienist edit Studios, Services, Prices, Shift Templates, Shifts or Shift Lines", async () => {
     await intruder.client.from("studios").update({ name: "Hijacked" }).eq("id", studioId);
     await intruder.client.from("services").update({ name: "Hijacked" }).eq("id", serviceId);
     await intruder.client.from("studio_service_prices").update({ price_cents: 1 }).eq("id", priceId);
     await intruder.client.from("shift_templates").update({ interval_weeks: 9 }).eq("id", templateId);
     await intruder.client.from("shifts").update({ time_of_day: "pm" }).eq("id", shiftId);
+    await intruder.client.from("shift_lines").update({ count: 99 }).eq("id", lineId);
 
     const studio = await owner.client.from("studios").select("name").eq("id", studioId).single();
     const service = await owner.client.from("services").select("name").eq("id", serviceId).single();
@@ -97,9 +108,12 @@ describe("tenant isolation (hygienist_id + RLS)", () => {
     expect(price.data?.price_cents).toBe(3200);
     expect(template.data?.interval_weeks).toBe(1);
     expect(shift.data?.time_of_day).toBe("am");
+    const line = await owner.client.from("shift_lines").select("count").eq("id", lineId).single();
+    expect(line.data?.count).toBe(6);
   });
 
   it.each([
+    ["shift_lines", () => lineId],
     ["shifts", () => shiftId],
     ["shift_templates", () => templateId],
     ["studio_service_prices", () => priceId],
@@ -124,6 +138,7 @@ describe("tenant isolation (hygienist_id + RLS)", () => {
       () => ({ studio_id: studioId, weekday: 4, time_of_day: "am", interval_weeks: 1, anchor_date: "2026-10-01" }),
     ],
     ["shifts", () => ({ studio_id: studioId, date: "2026-10-01", time_of_day: "am" })],
+    ["shift_lines", () => ({ shift_id: shiftId, service_id: serviceId, count: 1, unit_price_cents: 1 })],
   ])("rejects %s rows claiming another hygienist's id", async (table, row) => {
     const { error } = await intruder.client.from(table).insert({ ...row(), hygienist_id: owner.id });
     expect(error).not.toBeNull();
@@ -166,6 +181,38 @@ describe("tenant isolation (hygienist_id + RLS)", () => {
     );
 
     const { error } = await anonymous.rpc("materialize_shifts");
+
+    expect(error).not.toBeNull();
+  });
+
+  it("rejects a Shift Line pointing at another hygienist's Shift or Service", async () => {
+    const studio = await intruder.client.from("studios").insert({ name: "Canonica" }).select().single();
+    const service = await intruder.client.from("services").insert({ name: "Sbiancamento" }).select().single();
+    const shift = await intruder.client
+      .from("shifts")
+      .insert({ studio_id: studio.data!.id, date: "2026-10-01", time_of_day: "am" })
+      .select()
+      .single();
+    expect(shift.error).toBeNull();
+
+    const onHerShift = await intruder.client
+      .from("shift_lines")
+      .insert({ shift_id: shiftId, service_id: service.data!.id, count: 1, unit_price_cents: 1 });
+    const withHerService = await intruder.client
+      .from("shift_lines")
+      .insert({ shift_id: shift.data!.id, service_id: serviceId, count: 1, unit_price_cents: 1 });
+
+    expect(onHerShift.error).not.toBeNull();
+    expect(withHerService.error).not.toBeNull();
+  });
+
+  it("does not close Shifts for anyone who isn't signed in", async () => {
+    const anonymous = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+
+    const { error } = await anonymous.rpc("close_shift", { p_shift_id: shiftId, p_counts: [] });
 
     expect(error).not.toBeNull();
   });

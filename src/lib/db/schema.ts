@@ -139,6 +139,8 @@ export const shiftTemplates = pgTable(
 
 // A Shift is independent of its Template once generated (ADR-0001):
 // template_id is provenance only, and is null for a one-off Shift.
+// A Shift is Planned until closed_at is set, which close_shift does when it
+// writes the Shift's Lines.
 export const shifts = pgTable(
   "shifts",
   {
@@ -148,6 +150,7 @@ export const shifts = pgTable(
     templateId: uuid("template_id"),
     date: date("date").notNull(),
     timeOfDay: timeOfDay("time_of_day").notNull(),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -164,5 +167,34 @@ export const shifts = pgTable(
     }).onDelete("set null"),
     index("shifts_hygienist_date_idx").on(t.hygienistId, t.date),
     ownedByHygienist("shifts"),
+  ],
+).enableRLS();
+
+// unit_price_cents is a snapshot of the Price List taken when the Shift was
+// closed (ADR-0002): it is copied, never a reference to a Price List entry.
+export const shiftLines = pgTable(
+  "shift_lines",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    hygienistId: hygienistId(),
+    shiftId: uuid("shift_id").notNull(),
+    serviceId: uuid("service_id").notNull(),
+    count: integer("count").notNull(),
+    unitPriceCents: integer("unit_price_cents").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.shiftId, t.serviceId),
+    foreignKey({
+      columns: [t.shiftId, t.hygienistId],
+      foreignColumns: [shifts.id, shifts.hygienistId],
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [t.serviceId, t.hygienistId],
+      foreignColumns: [services.id, services.hygienistId],
+    }).onDelete("cascade"),
+    check("shift_lines_count_positive", sql`${t.count} > 0`),
+    check("shift_lines_unit_price_not_negative", sql`${t.unitPriceCents} >= 0`),
+    ownedByHygienist("shift_lines"),
   ],
 ).enableRLS();
